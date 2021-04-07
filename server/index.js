@@ -32,11 +32,32 @@ db.connect((err, res) => {
     }
 })
 
-app.post('/signup' , (req , res)=>{
-   res.send('hello from simple server :)')
+// app.post('/signup' , (req , res)=>{
+//     // const email = req.body.email
+//     // const password = req.body.password
+
+//     console.log("REQ: ", req)
+//     // console.log("EMAIL: ", email)
+//     // console.log("PASSWORD: ", password)
+
+//    res.send('hello from simple server :)')
+// })
+
+// ここでres.sendすると、ブラウザに新しいページが表示される
+app.post('/signup', (req, res) => {
+    // console.log("REQ: ", req)
+    // console.log("REQHEADER: ", req.headers)
+    console.log("FIRST NAME POST: ", req.body.firstName)
+    console.log("LAST NAME POST: ", req.body.lastName)
+    console.log("EMAIL POST: ", req.body.email)
+    console.log("PASSWORD POST: ", req.body.password)
+
+    res.send("SUNCCESSFULLY RESPONDED! CONGRATS!!")
 })
 
-
+app.get('/signup', (req, res) => {
+    res.send("GET WAS IMPLEMENTED")
+})
 
 
 
