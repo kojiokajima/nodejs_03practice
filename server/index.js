@@ -32,6 +32,14 @@ db.connect((err, res) => {
     }
 })
 
+app.post('/signup' , (req , res)=>{
+   res.send('hello from simple server :)')
+})
+
+
+
+
+
 app.listen(3001, () => {
     console.log("SERVER IS RUNNING");
 })
