@@ -13,7 +13,7 @@ app.use(cors({
     methods: ["GET", "POST"],
     credentials: true
 }));
-app.use(express.urlencoded({extended: true}));
+app.use(express.urlencoded({ extended: true }));
 
 const db = mmysql.createConnection({
     user: process.env.NODE_USER,
@@ -43,23 +43,46 @@ db.connect((err, res) => {
 //    res.send('hello from simple server :)')
 // })
 
-// ここでres.sendすると、ブラウザに新しいページが表示される
+// ここでres.sendすると、ブラウザに新しいページが表示されるんだね
+// 逆に、app.postでres.sendしてもブラウザ上の変化はない
 app.post('/signup', (req, res) => {
-    // console.log("REQ: ", req)
-    // console.log("REQHEADER: ", req.headers)
-    console.log("FIRST NAME POST: ", req.body.firstName)
-    console.log("LAST NAME POST: ", req.body.lastName)
-    console.log("EMAIL POST: ", req.body.email)
-    console.log("PASSWORD POST: ", req.body.password)
+    // console.log("FIRST NAME POST: ", req.body.firstName)
+    // console.log("LAST NAME POST: ", req.body.lastName)
+    // console.log("EMAIL POST: ", req.body.email)
+    // console.log("PASSWORD POST: ", req.body.password)
+    const firstName = req.body.firstName;
+    const lastName = req.body.lastName;
+    const email = req.body.email;
+    const password = req.body.password;
 
-    res.send("SUNCCESSFULLY RESPONDED! CONGRATS!!")
+    bcrypt.hash(password, 10, (err, hash) => {
+        if (err) {
+            console.log("COULD NOT CREATE HASH: ", err);
+        }
+        db.query(
+            "INSERT INTO users (f_name, l_name, email, password) VALUES (?, ?, ?, ?)",
+            [firstName, lastName, email, hash],
+            (err, results) => {
+                if (err) {
+                    console.log("COULD NOT INSERT USER: ", err);
+                    res.redirect('/signup')
+                } else {
+                    console.log("USER ADDED");
+                    res.redirect("/dashboard")
+                }
+            }
+        )
+    })
+
+    // res.end()
+    // res.redirect('http://localhost:3000')
+    // プロキシ設定したので、これはhttp://localhost:3000にリダイレクトされる
+    // res.redirect('/')
 })
 
 app.get('/signup', (req, res) => {
     res.send("GET WAS IMPLEMENTED")
 })
-
-
 
 app.listen(3001, () => {
     console.log("SERVER IS RUNNING");
