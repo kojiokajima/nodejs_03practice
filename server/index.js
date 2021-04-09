@@ -3,17 +3,29 @@ const mmysql = require("mysql2")
 const cors = require("cors")
 const bcrypt = require("bcrypt")
 const jwt = require("jsonwebtoken")
+const session = require("express-session")
+const cookieParser = require("cookie-parser")
 
 const app = express()
 require("dotenv").config()
 
+app.use(cookieParser())
 app.use(express.json())
+app.use(express.urlencoded({ extended: true }));
 app.use(cors({
     origin: ["http://localhost:3000"],
     methods: ["GET", "POST"],
     credentials: true
 }));
-app.use(express.urlencoded({ extended: true }));
+app.use(session({
+    key: "token",
+    secret: process.env.NODE_SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        expiresIn: 60 * 60 * 2
+    },
+}))
 
 const db = mmysql.createConnection({
     user: process.env.NODE_USER,
@@ -73,15 +85,106 @@ app.post('/signup', (req, res) => {
             }
         )
     })
-
-    // res.end()
-    // res.redirect('http://localhost:3000')
-    // プロキシ設定したので、これはhttp://localhost:3000にリダイレクトされる
-    // res.redirect('/')
 })
 
-app.get('/signup', (req, res) => {
-    res.send("GET WAS IMPLEMENTED")
+const verifyJWT = (req, res, next) => {
+    // const token = req.headers["x-access-token"]
+    const token = req.session.jwttoken
+    console.log("REQ.SESSION.JWTTOKEN: ", req.session.jwttoken)
+
+    // console.log("-------------------------------");
+    // console.log("REQ: ", req);
+    // console.log("-------------------------------");
+
+    if (!token) {
+        console.log("TOKEN IS MISSING");
+        res.send("Yo, you need a token.")
+    } else {
+        jwt.verify(token, process.env.NODE_JWT_SECRET, (err, decoded) => {
+            if (err) {
+                res.json({ auth: false, message: "U failed to authenticate" })
+            } else {
+                // console.log("-------------------------------");
+                // console.log("REQ: ", req);
+                req.userId = decoded.id
+                console.log("DECODED: ", decoded);
+                // console.log("DECODED.ID: ", decoded.id);
+                // console.log("REQ: ", req);
+                // console.log("rREQ.USERID: ", req.userId);
+                // console.log("-------------------------------");
+                next()
+            }
+        })
+    }
+}
+
+app.get('/login', verifyJWT, (req, res) => {
+    // res.json({auth: true, uid: "get"})
+    // res.send("HIII")
+    if (req.session.jwttoken) {
+        res.send({
+            loggedIn: true,
+            token: req.session.jwttoken,
+            firstName: req.session.firstName,
+            lastName: req.session.lastName,
+            email: req.session.email
+        })
+    } else {
+        res.send({ liggedIn: false })
+    }
+})
+
+app.post('/login', (req, res) => {
+    const email = req.body.email
+    const password = req.body.password
+    // console.log("EMAIL: ", email)
+    // console.log("PASSWORD: ", password);
+    // res.json({auth: false, uid: "post"})
+    db.query(
+        'SELECT * FROM users WHERE email = ?',
+        [email],
+        (err, result) => {
+            if (err) {
+                console.log("ERRRRRR?");
+                res.send({ err: err })
+            }
+
+            if (result.length > 0) {
+                console.log("LENGTH IS GREATER THAN 0");
+                // console.log(result);
+                bcrypt.compare(password, result[0].password, (error, response) => {
+                    // このresponseは、trueかfalseを返してる
+                    if (response) {
+                        // console.log("RSPONSE(crypt): ", response);
+                        // console.log("RESULT(db): ", result);
+                        const id = result[0].id
+                        const token = jwt.sign({ id }, process.env.NODE_JWT_SECRET, {
+                            expiresIn: 300,
+                        })
+                        // req.session.jwttoken = result
+                        req.session.jwttoken = token
+                        req.session.firstName = result[0].f_name
+                        req.session.lastName = result[0].l_name
+                        req.session.email = result[0].email
+                        console.log("TOKENNN: ", token)
+
+
+
+                        // console.log("REQ: ", req);
+                        // console.log("REQ.SESSION: ", req.session);
+                        // req.locals.token = token
+                        res.redirect('/dashboard/' + result[0].id)
+                        // res.redirect("/dashboard")
+                        // res.send(token)
+                    } else {
+                        res.json({ auth: false, message: "wrong email/password combination" })
+                    }
+                })
+            } else {
+                res.json({ auth: false, message: "no user exist" })
+            }
+        }
+    )
 })
 
 app.listen(3001, () => {
