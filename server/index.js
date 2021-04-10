@@ -6,6 +6,7 @@ const jwt = require("jsonwebtoken")
 const session = require("express-session")
 const cookieParser = require("cookie-parser")
 
+const port = process.env.PORT || 3001
 const app = express()
 require("dotenv").config()
 
@@ -18,13 +19,13 @@ app.use(cors({
     credentials: true
 }));
 app.use(session({
-    key: "token",
+    key: "tokenYOYO",
     secret: process.env.NODE_SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
-    cookie: {
-        expiresIn: 60 * 60 * 2
-    },
+    // cookie: {
+    //     expiresIn: 60 * 60 * 2
+    // },
 }))
 
 const db = mmysql.createConnection({
@@ -80,7 +81,8 @@ app.post('/signup', (req, res) => {
                     res.redirect('/signup')
                 } else {
                     console.log("USER ADDED");
-                    res.redirect("/dashboard")
+                    console.log("RESULT: ", results)
+                    res.redirect("/dashboard/" + results.insertId)
                 }
             }
         )
@@ -89,8 +91,8 @@ app.post('/signup', (req, res) => {
 
 const verifyJWT = (req, res, next) => {
     // const token = req.headers["x-access-token"]
-    const token = req.session.jwttoken
-    console.log("REQ.SESSION.JWTTOKEN: ", req.session.jwttoken)
+    const token = req.session.token
+    // console.log("REQ.SESSION.JWTTOKEN: ", req.session.jwttoken)
 
     // console.log("-------------------------------");
     // console.log("REQ: ", req);
@@ -106,8 +108,11 @@ const verifyJWT = (req, res, next) => {
             } else {
                 // console.log("-------------------------------");
                 // console.log("REQ: ", req);
-                req.userId = decoded.id
-                console.log("DECODED: ", decoded);
+                // req.userId = decoded.id
+
+                // req.session.id = String(decoded.id)
+                // console.log("DECODED: ", String(decoded.id));
+
                 // console.log("DECODED.ID: ", decoded.id);
                 // console.log("REQ: ", req);
                 // console.log("rREQ.USERID: ", req.userId);
@@ -121,13 +126,14 @@ const verifyJWT = (req, res, next) => {
 app.get('/login', verifyJWT, (req, res) => {
     // res.json({auth: true, uid: "get"})
     // res.send("HIII")
-    if (req.session.jwttoken) {
+    if (req.session.token) {
         res.send({
             loggedIn: true,
-            token: req.session.jwttoken,
+            token: req.session.token,
             firstName: req.session.firstName,
             lastName: req.session.lastName,
-            email: req.session.email
+            email: req.session.email,
+            id: req.session.uid
         })
     } else {
         res.send({ liggedIn: false })
@@ -162,18 +168,23 @@ app.post('/login', (req, res) => {
                             expiresIn: 300,
                         })
                         // req.session.jwttoken = result
-                        req.session.jwttoken = token
+                        req.session.token = token
                         req.session.firstName = result[0].f_name
                         req.session.lastName = result[0].l_name
                         req.session.email = result[0].email
-                        console.log("TOKENNN: ", token)
+                        req.session.uid = result[0].id
+                        // console.log("RESPONSE: ", result[0]);
+                        // console.log("TYPE: ", typeof (req.session.id));
+                        // console.log("TYPE: ", typeof (req.session.id));
+                        // console.log("TOKEN: ", req.session.jwttoken);
+                        // console.log("TOKENNN: ", token)
 
 
 
                         // console.log("REQ: ", req);
                         // console.log("REQ.SESSION: ", req.session);
                         // req.locals.token = token
-                        res.redirect('/dashboard/' + result[0].id)
+                        res.redirect('/dashboard/' + req.session.id)
                         // res.redirect("/dashboard")
                         // res.send(token)
                     } else {
@@ -187,6 +198,17 @@ app.post('/login', (req, res) => {
     )
 })
 
-app.listen(3001, () => {
-    console.log("SERVER IS RUNNING");
+app.post("/logout", (req, res) => {
+    req.session.destroy((err) => {
+        if (err) {
+            // res.redirect('/dashboard/' + req.session.id)
+            log("ERRRRR: ", err)
+        }
+        // res.redirect('/')
+        res.send("YOOOOOOOO")
+    })
+})
+
+app.listen(port, (req, res) => {
+    console.log("SERVER IS RUNNING ON ", port);
 })
