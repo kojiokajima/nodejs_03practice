@@ -22,12 +22,10 @@ const SignIn = () => {
   //     //   localStorage.setItem("email: ", response.data.email);
   //     // }
 
-
   //     console.log("RESPONSE: ", response.data);
   //     console.log("LOGINSTATUS: ", loginStatus);
   //   });
   // }, []);
-
 
   return (
     <div>

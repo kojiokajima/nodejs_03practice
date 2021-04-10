@@ -1,14 +1,17 @@
 const express = require("express")
-const mmysql = require("mysql2")
+const mysql = require("mysql2")
 const cors = require("cors")
 const bcrypt = require("bcrypt")
 const jwt = require("jsonwebtoken")
 const session = require("express-session")
 const cookieParser = require("cookie-parser")
+const path = require("path")
 
 const port = process.env.PORT || 3001
 const app = express()
 require("dotenv").config()
+
+// console.log((__dirname));
 
 app.use(cookieParser())
 app.use(express.json())
@@ -29,7 +32,7 @@ app.use(session({
     // },
 }))
 
-const db = mmysql.createConnection({
+const db = mysql.createConnection({
     user: process.env.NODE_USER,
     host: process.env.NODE_HOST,
     password: process.env.NODE_PASSWORD,
