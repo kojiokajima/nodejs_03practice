@@ -13,6 +13,7 @@ require("dotenv").config()
 app.use(cookieParser())
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, '../client/build')));
 app.use(cors({
     origin: ["http://localhost:3000"],
     methods: ["GET", "POST"],
@@ -207,6 +208,10 @@ app.post("/logout", (req, res) => {
         // res.redirect('/')
         res.send("YOOOOOOOO")
     })
+})
+
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../client/build/index.html'))
 })
 
 app.listen(port, (req, res) => {
