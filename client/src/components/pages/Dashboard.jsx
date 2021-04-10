@@ -27,8 +27,6 @@ const Dashboard = () => {
         localStorage.setItem("token", response.data.token);
         setFirstName(localStorage.getItem("firstName"));
       }
-    //   if (localStorage.getItem("id")) {
-    //   }
     });
   }, []);
 
