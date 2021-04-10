@@ -11,8 +11,6 @@ const port = process.env.PORT || 3001
 const app = express()
 require("dotenv").config()
 
-// console.log((__dirname));
-
 app.use(cookieParser())
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }));
