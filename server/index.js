@@ -173,56 +173,58 @@ app.post('/login', (req, res) => {
     // console.log("EMAIL: ", email)
     // console.log("PASSWORD: ", password);
     // res.json({auth: false, uid: "post"})
-    db.query(
-        'SELECT * FROM users WHERE email = ?',
-        [email],
-        (err, result) => {
-            if (err) {
-                console.log("ERRRRRR?");
-                res.send({ err: err })
+    pool.connect((err, db) => {
+        db.query(
+            'SELECT * FROM users WHERE email = $1',
+            [email],
+            (err, result) => {
+                if (err) {
+                    console.log("ERRRRRR?");
+                    res.send({ err: err })
+                }
+    
+                if (result.rows.length > 0) { // ---------------------------------------
+                    console.log("LENGTH IS GREATER THAN 0");
+                    // console.log(result);
+                    bcrypt.compare(password, result.rows[0].password, (error, response) => {
+                        // このresponseは、trueかfalseを返してる
+                        if (response) {
+                            // console.log("RSPONSE(crypt): ", response);
+                            // console.log("RESULT(db): ", result);
+                            const id = result.rows[0].id
+                            const token = jwt.sign({ id }, process.env.NODE_JWT_SECRET, {
+                                expiresIn: 300,
+                            })
+                            // req.session.jwttoken = result
+                            req.session.token = token
+                            req.session.firstName = result.rows[0].f_name
+                            req.session.lastName = result.rows[0].l_name
+                            req.session.email = result.rows[0].email
+                            req.session.uid = result.rows[0].id
+                            // console.log("RESPONSE: ", result[0]);
+                            // console.log("TYPE: ", typeof (req.session.id));
+                            // console.log("TYPE: ", typeof (req.session.id));
+                            // console.log("TOKEN: ", req.session.jwttoken);
+                            // console.log("TOKENNN: ", token)
+    
+    
+    
+                            // console.log("REQ: ", req);
+                            // console.log("REQ.SESSION: ", req.session);
+                            // req.locals.token = token
+                            res.redirect('/dashboard/' + req.session.id)
+                            // res.redirect("/dashboard")
+                            // res.send(token)
+                        } else {
+                            res.json({ auth: false, message: "wrong email/password combination" })
+                        }
+                    })
+                } else {
+                    res.json({ auth: false, message: "no user exist" })
+                }
             }
-
-            if (result.length > 0) {
-                console.log("LENGTH IS GREATER THAN 0");
-                // console.log(result);
-                bcrypt.compare(password, result[0].password, (error, response) => {
-                    // このresponseは、trueかfalseを返してる
-                    if (response) {
-                        // console.log("RSPONSE(crypt): ", response);
-                        // console.log("RESULT(db): ", result);
-                        const id = result[0].id
-                        const token = jwt.sign({ id }, process.env.NODE_JWT_SECRET, {
-                            expiresIn: 300,
-                        })
-                        // req.session.jwttoken = result
-                        req.session.token = token
-                        req.session.firstName = result[0].f_name
-                        req.session.lastName = result[0].l_name
-                        req.session.email = result[0].email
-                        req.session.uid = result[0].id
-                        // console.log("RESPONSE: ", result[0]);
-                        // console.log("TYPE: ", typeof (req.session.id));
-                        // console.log("TYPE: ", typeof (req.session.id));
-                        // console.log("TOKEN: ", req.session.jwttoken);
-                        // console.log("TOKENNN: ", token)
-
-
-
-                        // console.log("REQ: ", req);
-                        // console.log("REQ.SESSION: ", req.session);
-                        // req.locals.token = token
-                        res.redirect('/dashboard/' + req.session.id)
-                        // res.redirect("/dashboard")
-                        // res.send(token)
-                    } else {
-                        res.json({ auth: false, message: "wrong email/password combination" })
-                    }
-                })
-            } else {
-                res.json({ auth: false, message: "no user exist" })
-            }
-        }
-    )
+        )
+    })
 })
 
 app.post("/logout", (req, res) => {

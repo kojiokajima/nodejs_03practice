@@ -10,7 +10,7 @@ const Home = () => {
 
     return (
         <div className="App">
-            <h1>HOOOOOOOOOOOOOME</h1>
+            <h1>HOOOOOOOOOME</h1>
             <Link to="/signup">
                 <Button node="button" style={{marginRight: '5px'}} waves="light">
                     Sign Up
