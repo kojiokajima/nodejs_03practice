@@ -6,6 +6,10 @@ const jwt = require("jsonwebtoken")
 const session = require("express-session")
 const cookieParser = require("cookie-parser")
 const path = require("path")
+// ------------------------------------------------------
+// const pg = require("pg")
+const { Pool } = require("pg")
+// ------------------------------------------------------
 
 const port = process.env.PORT || 3001
 const app = express()
@@ -30,15 +34,32 @@ app.use(session({
     // },
 }))
 
-const db = mysql.createConnection({
-    user: process.env.NODE_USER,
-    host: process.env.NODE_HOST,
-    password: process.env.NODE_PASSWORD,
-    database: process.env.NODE_DATABASE,
-    port: process.env.NODE_PORT
-})
+// --------------SET UP CONFIGRATION OF DB--------------
+// const db = mysql.createConnection({
+//     user: process.env.NODE_USER,
+//     host: process.env.NODE_HOST,
+//     password: process.env.NODE_PASSWORD,
+//     database: process.env.NODE_DATABASE,
+//     port: process.env.NODE_PORT
+// })
 
-db.connect((err, res) => {
+// const db = require("./db")
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
+})
+// --------------/SET UP CONFIGRATION OF DB--------------
+
+// --------------CREATE CONNECTION TO DB--------------
+// db.connect((err, res) => {
+//     if (err) {
+//         console.log("FAILED TO CONNECT TO BATABASE");
+//         console.log(err);
+//     } else {
+//         console.log("CONNECTED TO DATABASE");
+//     }
+// })
+pool.connect((err, res) => {
     if (err) {
         console.log("FAILED TO CONNECT TO BATABASE");
         console.log(err);
@@ -46,6 +67,7 @@ db.connect((err, res) => {
         console.log("CONNECTED TO DATABASE");
     }
 })
+// --------------/CREATE CONNECTION TO DB--------------
 
 // app.post('/signup' , (req , res)=>{
 //     // const email = req.body.email
@@ -74,20 +96,23 @@ app.post('/signup', (req, res) => {
         if (err) {
             console.log("COULD NOT CREATE HASH: ", err);
         }
-        db.query(
-            "INSERT INTO users (f_name, l_name, email, password) VALUES (?, ?, ?, ?)",
-            [firstName, lastName, email, hash],
-            (err, results) => {
-                if (err) {
-                    console.log("COULD NOT INSERT USER: ", err);
-                    res.redirect('/signup')
-                } else {
-                    console.log("USER ADDED");
-                    console.log("RESULT: ", results)
-                    res.redirect("/dashboard/" + results.insertId)
+        pool.connect((err, db) => {
+            db.query(
+                "INSERT INTO users (f_name, l_name, email, password) VALUES ($1, $2, $3, $4)",
+                [firstName, lastName, email, hash],
+                (err, results) => {
+                    if (err) {
+                        console.log("COULD NOT INSERT USER: ", err);
+                        res.redirect('/signup')
+                    } else {
+                        console.log("USER ADDED");
+                        // console.log("RESULT: ", results)
+                        // res.redirect("/dashboard/" + results.insertId)
+                        res.redirect('/signup')
+                    }
                 }
-            }
-        )
+            )
+        })
     })
 })
 
