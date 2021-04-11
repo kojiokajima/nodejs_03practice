@@ -107,8 +107,20 @@ app.post('/signup', (req, res) => {
                     } else {
                         console.log("USER ADDED");
                         // console.log("RESULT: ", results)
+                        // db.query(
+                        //     "SELECT * FROM users WHERE email = $1",
+                        //     [email],
+                        //     (err, result) => {
+                        //         if (err) {
+                        //             console.log("USER ADDED BUT FAILDED TO FETCH");
+                        //         } else {
+                        //             res.redirect("/dashboard/" + result.rows[0].id)
+                        //         }
+                        //     }
+                        // )
+
                         // res.redirect("/dashboard/" + results.insertId)
-                        res.redirect('/signup')
+                        res.redirect('/signin')
                     }
                 }
             )
