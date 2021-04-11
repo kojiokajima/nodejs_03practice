@@ -35,21 +35,29 @@ const Dashboard = () => {
       <h2>Welcome back, {firstName}!</h2>
       <br />
       <br />
-      <Row>
-        <Textarea id="Textarea-12" l={12} m={12} s={12} xl={12} />
-      </Row>
+      <form action="/post" method="post">
+        <Row>
+          <Textarea id="post" label="post" name="post" l={12} m={12} s={12} xl={12} />
+          <Button
+            node="button"
+            style={{ marginRight: "-55px" }}
+            waves="light"
+            onClick={logout}
+          >
+            post
+          </Button>
+        </Row>
+      </form>
       <br />
       <br />
-      <Link to="/signin">
-        <Button
-          node="button"
-          style={{ marginRight: "5px" }}
-          waves="light"
-          onClick={logout}
-        >
-          Logout
-        </Button>
-      </Link>
+      <Button
+        node="button"
+        style={{ marginRight: "5px" }}
+        waves="light"
+        onClick={logout}
+      >
+        Logout
+      </Button>
     </div>
   );
 };
