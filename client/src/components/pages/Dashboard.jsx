@@ -4,7 +4,9 @@ import axios from "axios";
 import { Button, Row, Textarea } from "react-materialize";
 
 const Dashboard = () => {
-  const [firstName, setFirstName] = useState();
+  // const [firstName, setFirstName] = useState(localStorage.getItem("firstName"));
+  const [firstName, setFirstName] = useState("");
+  console.log("RENDERED!!!!: ", firstName);
 
   const logout = () => {
     axios.post("/logout").then((response) => {
@@ -25,9 +27,10 @@ const Dashboard = () => {
         localStorage.setItem("email: ", response.data.email);
         localStorage.setItem("token", response.data.token);
         // setFirstName(localStorage.getItem("firstName"));
+        setFirstName(response.data.firstName);
       }
     });
-    setFirstName(localStorage.getItem("firstName"));
+    // setFirstName(localStorage.getItem("firstName"));
   }, []);
 
   return (
