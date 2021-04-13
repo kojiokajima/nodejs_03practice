@@ -1,10 +1,16 @@
 const express = require("express")
-const mmysql = require("mysql2")
+const mysql = require("mysql2")
 const cors = require("cors")
 const bcrypt = require("bcrypt")
 const jwt = require("jsonwebtoken")
 const session = require("express-session")
 const cookieParser = require("cookie-parser")
+const path = require("path")
+// ------------------------------------------------------
+// const pg = require("pg")
+const { Pool } = require("pg")
+const e = require("express")
+// ------------------------------------------------------
 
 const port = process.env.PORT || 3001
 const app = express()
@@ -20,24 +26,43 @@ app.use(cors({
     credentials: true
 }));
 app.use(session({
-    key: "tokenYOYO",
+    key: "token",
     secret: process.env.NODE_SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
-    // cookie: {
-    //     expiresIn: 60 * 60 * 2
-    // },
+    cookie: {
+        // expiresIn: 60
+        // maxAge: 1000 * 60 * 60
+        maxAge: 1000 * 60 * 60 // --> 5分ってこと
+    },
 }))
 
-const db = mmysql.createConnection({
-    user: process.env.NODE_USER,
-    host: process.env.NODE_HOST,
-    password: process.env.NODE_PASSWORD,
-    database: process.env.NODE_DATABASE,
-    port: process.env.NODE_PORT
-})
+// --------------SET UP CONFIGRATION OF DB--------------
+// const db = mysql.createConnection({
+//     user: process.env.NODE_USER,
+//     host: process.env.NODE_HOST,
+//     password: process.env.NODE_PASSWORD,
+//     database: process.env.NODE_DATABASE,
+//     port: process.env.NODE_PORT
+// })
 
-db.connect((err, res) => {
+// const db = require("./db")
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
+})
+// --------------/SET UP CONFIGRATION OF DB--------------
+
+// --------------CREATE CONNECTION TO DB--------------
+// db.connect((err, res) => {
+//     if (err) {
+//         console.log("FAILED TO CONNECT TO BATABASE");
+//         console.log(err);
+//     } else {
+//         console.log("CONNECTED TO DATABASE");
+//     }
+// })
+pool.connect((err, res) => {
     if (err) {
         console.log("FAILED TO CONNECT TO BATABASE");
         console.log(err);
@@ -45,6 +70,7 @@ db.connect((err, res) => {
         console.log("CONNECTED TO DATABASE");
     }
 })
+// --------------/CREATE CONNECTION TO DB--------------
 
 // app.post('/signup' , (req , res)=>{
 //     // const email = req.body.email
@@ -73,26 +99,42 @@ app.post('/signup', (req, res) => {
         if (err) {
             console.log("COULD NOT CREATE HASH: ", err);
         }
-        db.query(
-            "INSERT INTO users (f_name, l_name, email, password) VALUES (?, ?, ?, ?)",
-            [firstName, lastName, email, hash],
-            (err, results) => {
-                if (err) {
-                    console.log("COULD NOT INSERT USER: ", err);
-                    res.redirect('/signup')
-                } else {
-                    console.log("USER ADDED");
-                    console.log("RESULT: ", results)
-                    res.redirect("/dashboard/" + results.insertId)
+        pool.connect((err, db) => {
+            db.query(
+                "INSERT INTO users (f_name, l_name, email, password) VALUES ($1, $2, $3, $4)",
+                [firstName, lastName, email, hash],
+                (err, results) => {
+                    if (err) {
+                        console.log("COULD NOT INSERT USER: ", err);
+                        res.redirect('/signup')
+                    } else {
+                        console.log("USER ADDED");
+                        // console.log("RESULT: ", results)
+                        // db.query(
+                        //     "SELECT * FROM users WHERE email = $1",
+                        //     [email],
+                        //     (err, result) => {
+                        //         if (err) {
+                        //             console.log("USER ADDED BUT FAILDED TO FETCH");
+                        //         } else {
+                        //             res.redirect("/dashboard/" + result.rows[0].id)
+                        //         }
+                        //     }
+                        // )
+
+                        // res.redirect("/dashboard/" + results.insertId)
+                        res.redirect('/signin')
+                    }
                 }
-            }
-        )
+            )
+        })
     })
 })
 
 const verifyJWT = (req, res, next) => {
     // const token = req.headers["x-access-token"]
     const token = req.session.token
+    // console.log("TOKENNN: ", token);
     // console.log("REQ.SESSION.JWTTOKEN: ", req.session.jwttoken)
 
     // console.log("-------------------------------");
@@ -101,7 +143,9 @@ const verifyJWT = (req, res, next) => {
 
     if (!token) {
         console.log("TOKEN IS MISSING");
-        res.send("Yo, you need a token.")
+        // res.send("Yo, you need a token.")
+        res.redirect('/')
+
     } else {
         jwt.verify(token, process.env.NODE_JWT_SECRET, (err, decoded) => {
             if (err) {
@@ -147,66 +191,134 @@ app.post('/login', (req, res) => {
     // console.log("EMAIL: ", email)
     // console.log("PASSWORD: ", password);
     // res.json({auth: false, uid: "post"})
-    db.query(
-        'SELECT * FROM users WHERE email = ?',
-        [email],
-        (err, result) => {
-            if (err) {
-                console.log("ERRRRRR?");
-                res.send({ err: err })
+    pool.connect((err, db) => {
+        db.query(
+            'SELECT * FROM users WHERE email = $1',
+            [email],
+            (err, result) => {
+                if (err) {
+                    console.log("ERRRRRR?");
+                    res.send({ err: err })
+                }
+
+                if (result.rows.length > 0) { // ---------------------------------------
+                    console.log("LENGTH IS GREATER THAN 0");
+                    // console.log(result);
+                    bcrypt.compare(password, result.rows[0].password, (error, response) => {
+                        // このresponseは、trueかfalseを返してる
+                        if (response) {
+                            // console.log("RSPONSE(crypt): ", response);
+                            // console.log("RESULT(db): ", result);
+                            const id = result.rows[0].id
+                            const token = jwt.sign({ id }, process.env.NODE_JWT_SECRET, {
+                                // expiresIn: 300,
+                                expiresIn: '2h'
+                            })
+                            // req.session.jwttoken = result
+                            req.session.token = token
+                            req.session.firstName = result.rows[0].f_name
+                            req.session.lastName = result.rows[0].l_name
+                            req.session.email = result.rows[0].email
+                            req.session.uid = result.rows[0].id
+                            // console.log("RESPONSE: ", result[0]);
+                            // console.log("TYPE: ", typeof (req.session.id));
+                            // console.log("TYPE: ", typeof (req.session.id));
+                            // console.log("TOKEN: ", req.session.jwttoken);
+                            // console.log("TOKENNN: ", token)
+
+
+
+                            // console.log("REQ: ", req);
+                            // console.log("REQ.SESSION: ", req.session);
+                            // req.locals.token = token
+                            res.redirect('/dashboard/' + req.session.uid)
+                            // res.redirect("/dashboard")
+                            // res.send(token)
+                        } else {
+                            res.json({ auth: false, message: "wrong email/password combination" })
+                        }
+                    })
+                } else {
+                    res.json({ auth: false, message: "no user exist" })
+                }
             }
-
-            if (result.length > 0) {
-                console.log("LENGTH IS GREATER THAN 0");
-                // console.log(result);
-                bcrypt.compare(password, result[0].password, (error, response) => {
-                    // このresponseは、trueかfalseを返してる
-                    if (response) {
-                        // console.log("RSPONSE(crypt): ", response);
-                        // console.log("RESULT(db): ", result);
-                        const id = result[0].id
-                        const token = jwt.sign({ id }, process.env.NODE_JWT_SECRET, {
-                            expiresIn: 300,
-                        })
-                        // req.session.jwttoken = result
-                        req.session.token = token
-                        req.session.firstName = result[0].f_name
-                        req.session.lastName = result[0].l_name
-                        req.session.email = result[0].email
-                        req.session.uid = result[0].id
-                        // console.log("RESPONSE: ", result[0]);
-                        // console.log("TYPE: ", typeof (req.session.id));
-                        // console.log("TYPE: ", typeof (req.session.id));
-                        // console.log("TOKEN: ", req.session.jwttoken);
-                        // console.log("TOKENNN: ", token)
-
-
-
-                        // console.log("REQ: ", req);
-                        // console.log("REQ.SESSION: ", req.session);
-                        // req.locals.token = token
-                        res.redirect('/dashboard/' + req.session.id)
-                        // res.redirect("/dashboard")
-                        // res.send(token)
-                    } else {
-                        res.json({ auth: false, message: "wrong email/password combination" })
-                    }
-                })
-            } else {
-                res.json({ auth: false, message: "no user exist" })
-            }
-        }
-    )
+        )
+    })
 })
 
 app.post("/logout", (req, res) => {
     req.session.destroy((err) => {
         if (err) {
-            // res.redirect('/dashboard/' + req.session.id)
             log("ERRRRR: ", err)
         }
         // res.redirect('/')
         res.send("YOOOOOOOO")
+    })
+})
+
+app.post('/post', (req, res) => {
+    // content = req.body.content;
+    // localStorage.getItem("id");
+    const content = req.body.content
+    const uid = req.session.uid
+    // console.log("CONTENT: ", content)
+    // console.log("ID: ", uid);
+
+    pool.connect((er, db) => {
+        if (er) {
+            console.log("NOT CONNECTED TO DB");
+            console.log(er);
+            res.send("FAILED TO CONNECT TO DATABASE")
+        } else {
+            db.query(
+                'INSERT INTO posts (user_id, content) VALUES ($1, $2)',
+                [uid, content],
+                (err, result) => {
+                    if (err) {
+                        console.log("FAILED TO INSERT POST")
+                        console.log(error);
+                        res.send("ERROR IN INSERTING POST")
+                    } else {
+                        console.log("POST ADDED!");
+                        res.redirect('/dashboard/' + uid)
+                    }
+                }
+            )
+        }
+    })
+
+    // pool.connect((err, db) => {
+    //     db.query((err, res) => {
+    //         'INSERT INTO posts (user_id, content) VALUES ($1, $2)',
+    //         []
+    //     })
+    // })
+
+    // res.redirect('/dashboard/' + req.session.uid)
+})
+
+app.get('/getpost', (req, res) => {
+    // console.log("/GETPOST CALLED");
+    pool.connect((err, db) => {
+        if (err) {
+            console.log("NOT CONNECTED TO DB");
+            res.send("NOT CONNECTED TO DB")
+        } else {
+            db.query(
+                'SELECT * FROM posts',
+                (error, results) => {
+                    if (error) {
+                        console.log("COULD NOT GET DATA");
+                        res.send("COULD NOT GET DATA")
+                    } else {
+                        console.log("DATABESE: ", results.rows);
+                        // if (results.rows.length > 0) {
+                            res.send(results.rows)
+                        // }
+                    }
+                }
+            )
+        }
     })
 })
 
