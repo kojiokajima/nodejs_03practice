@@ -38,6 +38,7 @@ const Dashboard = () => {
         localStorage.setItem("email", response.data.email);
         localStorage.setItem("token", response.data.token);
         // setFirstName(localStorage.getItem("firstName"));
+
         // setFirstName(response.data.firstName);
       }
       setFirstName(localStorage.getItem("firstName"));
@@ -53,6 +54,10 @@ const Dashboard = () => {
       }
       console.log("POSTS: ", posts);
     });
+
+
+    // setFirstName(localStorage.getItem("firstName"));
+
   }, []);
 
   // useEffect(() => {
