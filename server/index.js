@@ -9,6 +9,7 @@ const path = require("path")
 // ------------------------------------------------------
 // const pg = require("pg")
 const { Pool } = require("pg")
+const e = require("express")
 // ------------------------------------------------------
 
 const port = process.env.PORT || 3001
@@ -25,13 +26,15 @@ app.use(cors({
     credentials: true
 }));
 app.use(session({
-    key: "tokenYOYO",
+    key: "token",
     secret: process.env.NODE_SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
-    // cookie: {
-    //     expiresIn: 60 * 60 * 2
-    // },
+    cookie: {
+        // expiresIn: 60
+        // maxAge: 1000 * 60 * 60
+        maxAge: 1000 * 60 * 60 // --> 5分ってこと
+    },
 }))
 
 // --------------SET UP CONFIGRATION OF DB--------------
@@ -131,6 +134,7 @@ app.post('/signup', (req, res) => {
 const verifyJWT = (req, res, next) => {
     // const token = req.headers["x-access-token"]
     const token = req.session.token
+    // console.log("TOKENNN: ", token);
     // console.log("REQ.SESSION.JWTTOKEN: ", req.session.jwttoken)
 
     // console.log("-------------------------------");
@@ -139,7 +143,9 @@ const verifyJWT = (req, res, next) => {
 
     if (!token) {
         console.log("TOKEN IS MISSING");
-        res.send("Yo, you need a token.")
+        // res.send("Yo, you need a token.")
+        res.redirect('/')
+
     } else {
         jwt.verify(token, process.env.NODE_JWT_SECRET, (err, decoded) => {
             if (err) {
@@ -194,7 +200,7 @@ app.post('/login', (req, res) => {
                     console.log("ERRRRRR?");
                     res.send({ err: err })
                 }
-    
+
                 if (result.rows.length > 0) { // ---------------------------------------
                     console.log("LENGTH IS GREATER THAN 0");
                     // console.log(result);
@@ -205,7 +211,8 @@ app.post('/login', (req, res) => {
                             // console.log("RESULT(db): ", result);
                             const id = result.rows[0].id
                             const token = jwt.sign({ id }, process.env.NODE_JWT_SECRET, {
-                                expiresIn: 300,
+                                // expiresIn: 300,
+                                expiresIn: '2h'
                             })
                             // req.session.jwttoken = result
                             req.session.token = token
@@ -218,13 +225,13 @@ app.post('/login', (req, res) => {
                             // console.log("TYPE: ", typeof (req.session.id));
                             // console.log("TOKEN: ", req.session.jwttoken);
                             // console.log("TOKENNN: ", token)
-    
-    
-    
+
+
+
                             // console.log("REQ: ", req);
                             // console.log("REQ.SESSION: ", req.session);
                             // req.locals.token = token
-                            res.redirect('/dashboard/' + req.session.id)
+                            res.redirect('/dashboard/' + req.session.uid)
                             // res.redirect("/dashboard")
                             // res.send(token)
                         } else {
@@ -246,6 +253,72 @@ app.post("/logout", (req, res) => {
         }
         // res.redirect('/')
         res.send("YOOOOOOOO")
+    })
+})
+
+app.post('/post', (req, res) => {
+    // content = req.body.content;
+    // localStorage.getItem("id");
+    const content = req.body.content
+    const uid = req.session.uid
+    // console.log("CONTENT: ", content)
+    // console.log("ID: ", uid);
+
+    pool.connect((er, db) => {
+        if (er) {
+            console.log("NOT CONNECTED TO DB");
+            console.log(er);
+            res.send("FAILED TO CONNECT TO DATABASE")
+        } else {
+            db.query(
+                'INSERT INTO posts (user_id, content) VALUES ($1, $2)',
+                [uid, content],
+                (err, result) => {
+                    if (err) {
+                        console.log("FAILED TO INSERT POST")
+                        console.log(error);
+                        res.send("ERROR IN INSERTING POST")
+                    } else {
+                        console.log("POST ADDED!");
+                        res.redirect('/dashboard/' + uid)
+                    }
+                }
+            )
+        }
+    })
+
+    // pool.connect((err, db) => {
+    //     db.query((err, res) => {
+    //         'INSERT INTO posts (user_id, content) VALUES ($1, $2)',
+    //         []
+    //     })
+    // })
+
+    // res.redirect('/dashboard/' + req.session.uid)
+})
+
+app.get('/getpost', (req, res) => {
+    // console.log("/GETPOST CALLED");
+    pool.connect((err, db) => {
+        if (err) {
+            console.log("NOT CONNECTED TO DB");
+            res.send("NOT CONNECTED TO DB")
+        } else {
+            db.query(
+                'SELECT * FROM posts',
+                (error, results) => {
+                    if (error) {
+                        console.log("COULD NOT GET DATA");
+                        res.send("COULD NOT GET DATA")
+                    } else {
+                        console.log("DATABESE: ", results.rows);
+                        // if (results.rows.length > 0) {
+                            res.send(results.rows)
+                        // }
+                    }
+                }
+            )
+        }
     })
 })
 
