@@ -3,8 +3,8 @@ import { Button, TextInput } from "react-materialize";
 import { Link } from "react-router-dom";
 
 const SignIn = () => {
-  const [loginStatus, setLoginStatus] = useState(false);
-  const [firstName, setFirstName] = useState("");
+  // const [loginStatus, setLoginStatus] = useState(false);
+  // const [firstName, setFirstName] = useState("");
 
   // useEffect(() => {
   //   axios.get("/login").then((response) => {
@@ -45,7 +45,7 @@ const SignIn = () => {
           Go Back
         </Button>
       </Link>
-      {loginStatus && <h2>Hey, {firstName}!</h2>}
+      {/* {loginStatus && <h2>Hey, {firstName}!</h2>} */}
     </div>
   );
 };

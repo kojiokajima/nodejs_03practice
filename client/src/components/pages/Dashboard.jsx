@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useHistory } from "react-router-dom";
 import axios from "axios";
 import { Button, Row, Textarea } from "react-materialize";
 
 const Dashboard = () => {
   const [firstName, setFirstName] = useState();
   const [posts, setPosts] = useState([]);
-  const dummy = ["a", "b", "c", "d"];
+  const history = useHistory()
 
   const logout = () => {
     axios.post("/logout").then((response) => {
@@ -28,7 +28,7 @@ const Dashboard = () => {
   useEffect(() => {
     console.log("USE EFFECT CALLED!!");
     axios.get("/login").then((response) => {
-      // console.log("RESPONSE: ", response);
+      console.log("RESPONSE1: ", response);
       if (response.data.loggedIn) {
         // setLoginStatus(true)
         // setFirstName(response.data.firstName)
@@ -38,26 +38,31 @@ const Dashboard = () => {
         localStorage.setItem("email", response.data.email);
         localStorage.setItem("token", response.data.token);
         // setFirstName(localStorage.getItem("firstName"));
+        setFirstName(localStorage.getItem("firstName"));
 
-        // setFirstName(response.data.firstName);
+      } else {
+        console.log("ELSE");
+        // return () => {
+          localStorage.clear()
+          history.push('/signin')
+          // return () => {
+          // }
+        // }
       }
-      setFirstName(localStorage.getItem("firstName"));
     });
 
     axios.get("/getpost").then((response) => {
       const data = response.data;
-      console.log(response);
+      console.log("RESPONSE2: ", response);
       if (data.length > 0) {
         console.log("DATA IS GREATER THAN 0");
         console.log(data);
         setPosts(data);
       }
-      console.log("POSTS: ", posts);
+      // console.log("POSTS: ", posts);
     });
 
-
     // setFirstName(localStorage.getItem("firstName"));
-
   }, []);
 
   // useEffect(() => {
@@ -79,8 +84,11 @@ const Dashboard = () => {
       <h2>Welcome back, {firstName}!</h2>
       <br />
       <br />
+      <p></p>
       {posts.map((post, index) => (
-        <div key={index}>{post.content}</div>
+        <div key={index}>
+          {post.user_id} : {post.content}
+        </div>
       ))}
       <br />
       <br />
