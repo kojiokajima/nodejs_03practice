@@ -33,7 +33,7 @@ app.use(session({
     cookie: {
         // expiresIn: 60
         // maxAge: 1000 * 60 * 60
-        maxAge: 1000 * 60 * 60 // --> 5分ってこと
+        maxAge: 1000 * 5 // --> これがsessionの有効期限になるんだねぇ。今は1分
     },
 }))
 
@@ -143,14 +143,17 @@ const verifyJWT = (req, res, next) => {
 
     if (!token) {
         console.log("TOKEN IS MISSING");
-        // res.send("Yo, you need a token.")
-        res.redirect('/')
+        console.log(token);
+        res.send("Yo, you need a token.")
+        // res.redirect('/signin')
 
     } else {
         jwt.verify(token, process.env.NODE_JWT_SECRET, (err, decoded) => {
             if (err) {
+                console.log("IN JWT.VERIFY ERROR");
                 res.json({ auth: false, message: "U failed to authenticate" })
             } else {
+                console.log("IN JWT.VERIFY SUCCEED");
                 // console.log("-------------------------------");
                 // console.log("REQ: ", req);
                 // req.userId = decoded.id
@@ -171,6 +174,7 @@ const verifyJWT = (req, res, next) => {
 app.get('/login', verifyJWT, (req, res) => {
     // res.json({auth: true, uid: "get"})
     // res.send("HIII")
+    console.log("AFTER VERIRYJWT");
     if (req.session.token) {
         res.send({
             loggedIn: true,
@@ -211,8 +215,8 @@ app.post('/login', (req, res) => {
                             // console.log("RESULT(db): ", result);
                             const id = result.rows[0].id
                             const token = jwt.sign({ id }, process.env.NODE_JWT_SECRET, {
-                                // expiresIn: 300,
-                                expiresIn: '2h'
+                                expiresIn: 300,
+                                // expiresIn: '2h'
                             })
                             // req.session.jwttoken = result
                             req.session.token = token
@@ -225,6 +229,7 @@ app.post('/login', (req, res) => {
                             // console.log("TYPE: ", typeof (req.session.id));
                             // console.log("TOKEN: ", req.session.jwttoken);
                             // console.log("TOKENNN: ", token)
+                            console.log("REQ.SESSION: ", req.session);
 
 
 
@@ -235,11 +240,13 @@ app.post('/login', (req, res) => {
                             // res.redirect("/dashboard")
                             // res.send(token)
                         } else {
-                            res.json({ auth: false, message: "wrong email/password combination" })
+                            // res.json({ auth: false, message: "wrong email/password combination" })
+                            res.redirect("/signin")
                         }
                     })
                 } else {
-                    res.json({ auth: false, message: "no user exist" })
+                    // res.json({ auth: false, message: "no user exist" })
+                    res.redirect("/signin")
                 }
             }
         )
@@ -311,10 +318,8 @@ app.get('/getpost', (req, res) => {
                         console.log("COULD NOT GET DATA");
                         res.send("COULD NOT GET DATA")
                     } else {
-                        console.log("DATABESE: ", results.rows);
-                        // if (results.rows.length > 0) {
-                            res.send(results.rows)
-                        // }
+                        // console.log("DATABESE: ", results.rows);
+                        res.send(results.rows)
                     }
                 }
             )
